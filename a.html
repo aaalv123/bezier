@@ -1,0 +1,196 @@
+<!DOCTYPE>  
+<html>  
+<head>  
+<title> new document </title>  
+<style type="text/css">  
+#canvasId { border: #6666ff 1px solid; position: absolute; top:60px; left:10px; }  
+#text { width: 600px; }  
+</style>  
+</head>  
+<body>  
+<input type="text" id="text" />  
+<input type="button" value="播放动画" onclick="run()" /><br />  
+说明：鼠标拖拽画布上的点可移动，双击画布空白处增加新的点，双击画布上的点可将其删除  
+<canvas id="canvasId" width="700" height="600"></canvas>  
+<script type="text/javascript">  
+var canvas = document.getElementById("canvasId");  
+var cxt = canvas.getContext("2d");  
+var p = [{x:43,y:131},{x:257,y:307},{x:237,y:27},{x:455,y:210}];  
+var clearTimer;  
+var bnp;  
+  
+  
+function curve(p,lt)//贝塞尔曲线  
+{  
+    var sx=0, sy=0, s=p.length-1;  
+    var q = [];  
+    for(var i=0, l = p.length-2; i<l; ++i)  
+    {  
+        q[i] = {  
+            x: (p[i+1].x - p[i].x) * s - sx ,  
+            y: (p[i+1].y - p[i].y) * s - sy  
+        };  
+        sx += q[i].x;  
+        sy += q[i].y;  
+    }  
+    q[i] = {  
+        x: p[i+1].x - p[0].x - sx ,  
+        y: p[i+1].y - p[0].y - sy  
+    };  
+    sx=sy=s=i=l=undefined;  
+    return function(t)  
+    {
+        t /= lt;  
+        var x=0, y=0;  
+        for(var i=q.length-1; i>=0; --i)  
+        {  
+            x = (x + q[i].x) * t;  
+            y = (y + q[i].y) * t;  
+        }  
+        return {x: x+p[0].x , y: y+p[0].y};  
+    };  
+}  
+  
+function upg()  
+{  
+    cxt.clearRect(0,0,canvas.width,canvas.height);  
+    cxt.strokeStyle = "#bcbcbc";  
+    cxt.lineWidth = 1;  
+    cxt.beginPath();  
+    for(var i=0, l = p.length; i<l; ++i)  
+    {  
+        var u = p[i];  
+        cxt.lineTo(u.x, u.y);  
+    }  
+    cxt.stroke();  
+    var cur = curve(p,100);  
+    cxt.strokeStyle = "#ff0000";  
+    cxt.lineWidth = 3;  
+    cxt.beginPath();  
+    for(var i=0; i<=100; i++)  
+    {  
+        u = cur(i);  
+        cxt.lineTo(u.x, u.y);  
+    }  
+    cxt.stroke();  
+    for(var i=0, l = p.length; i<l; ++i)  
+    {  
+        u = p[i];  
+        cxt.fillStyle = u===bnp?"#c8660d":"#5b6ff0";  
+        cxt.beginPath();  
+        cxt.arc(u.x, u.y,6,0,2*Math.PI,true);  
+        cxt.closePath();  
+        cxt.fill();  
+    }  
+}  
+  
+function run()  
+{  
+    clearTimeout(clearTimer);  
+    var cur = curve(p,100);  
+    cxt.strokeStyle = "#ff0000";  
+    cxt.lineWidth = 1;  
+    cxt.fillStyle = "#7122b7";  
+    function eyg(t)  
+    {  
+        cxt.clearRect(0,0,canvas.width,canvas.height);  
+        cxt.beginPath();  
+        for(var i=0; i<=100; i++)  
+        {  
+            var u = cur(i);  
+            cxt.lineTo(u.x, u.y);  
+        }  
+        cxt.stroke();  
+        var u = cur(t);  
+        cxt.beginPath();  
+        cxt.arc(u.x, u.y,8,0,2*Math.PI,true);  
+        cxt.closePath();  
+        cxt.fill();  
+        if(++t<=100)  
+            clearTimer = setTimeout(function(){eyg(t)},50);  
+        else  
+            upg();  
+    }  
+    eyg(0);  
+}  
+  
+function distance(a,b)  
+{  
+    var x = b.x-a.x , y = b.y-a.y;  
+    return Math.sqrt(x*x+y*y);  
+}  
+  
+function getXY(e)  
+{  
+    return {  
+        x : e.clientX - canvas.offsetLeft + document.body.scrollLeft,  
+        y : e.clientY - canvas.offsetTop  + document.body.scrollTop  
+    }  
+}  
+  
+function select(sp)  
+{  
+    for(var i=0, l = p.length; i<l; ++i)  
+        if(distance(sp,p[i])<=6)  
+            return i;  
+    return -1;  
+};  
+  
+function uptext()  
+{  
+    var arr = [];  
+    for(var i=0, l = p.length; i<l; ++i)  
+        arr[i] = "{x:"+p[i].x+",y:"+p[i].y+"}";  
+    document.getElementById("text").value = "["+arr.join(",")+"]";  
+}  
+  
+canvas.onmousedown=function(e)  
+{  
+    e = e||event;  
+    var sp = getXY(e);  
+    var gr = select(sp);  
+    bnp = gr!=-1 ? p[gr] : null;  
+};  
+  
+canvas.onmousemove=function(e)  
+{  
+    if(!bnp) return;  
+    e = e||event;  
+    var sp = getXY(e);  
+    bnp.x = sp.x;  
+    bnp.y = sp.y;  
+    uptext();  
+    upg();  
+};  
+  
+canvas.onmouseup=function(e)  
+{  
+    bnp = null;  
+};  
+  
+canvas.ondblclick=function(e)  
+{  
+    e = e||event;  
+    var sp = getXY(e);  
+    var gr = select(sp);  
+    if(gr==-1)  
+        p.push(sp);  
+    else  
+    {  
+        if(p.length>2)  
+            p.splice(gr,1);  
+        else  
+            alert("一条线不能少于 2 个点吧");  
+    }  
+    uptext();  
+    upg();  
+};  
+  
+canvas.onselectstart=canvas.ondragstart=function(e){return false;};  
+  
+uptext();  
+upg();  
+  
+</script>  
+</body>  
+</html>  
